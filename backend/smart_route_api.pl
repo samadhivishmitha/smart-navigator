@@ -12,8 +12,20 @@
 
 :- dynamic blocked_road/2.
 
-% Persisted blocked roads file (written/read as Prolog facts)
-blocked_roads_file('backend/data/blocked_roads.pl').
+% --- FIX (warning @ line 19): resolve paths relative to THIS file's own
+% directory instead of the process's current working directory. This
+% removes the dependency on the deprecated source_search_working_directory
+% flag and works no matter where `swipl` is launched from.
+:- dynamic source_dir/1.
+:- prolog_load_context(directory, ThisDir),
+   asserta(source_dir(ThisDir)).
+
+% Persisted blocked roads file (written/read as Prolog facts).
+% smart_route_api.pl lives directly in backend/, and blocked_roads.pl lives
+% in backend/data/, so data/ is a sibling directory of this source file.
+blocked_roads_file(File) :-
+    source_dir(Dir),
+    atomic_list_concat([Dir, '/data/blocked_roads.pl'], File).
 
 % Load persisted blocked roads if the file exists
 :- ( blocked_roads_file(File), exists_file(File) -> consult(File) ; true ).
@@ -24,6 +36,12 @@ blocked_roads_file('backend/data/blocked_roads.pl').
 :- http_handler(root(api/details), details_api, []).
 :- http_handler(root(api/search), search_api, []).
 :- http_handler(root(api/reverse), reverse_api, []).
+
+% --- FIX (warning @ line 550): clauses of details_api/1 are intentionally
+% split (a GET clause and a POST clause) with other predicates defined in
+% between. This directive tells Prolog that's expected, silencing the
+% "not together in source-file" warning without reordering anything.
+:- discontiguous details_api/1.
 
 % Default blocked roads for demo (will be overridden by persisted file if present)
 blocked_road(rajagiriya, maradana).
@@ -245,7 +263,10 @@ find_best_route(Start, Destination, Preference, Path, Distance, Minutes) :-
     % Prefer OSRM (free OpenStreetMap-based routing). If that fails, try
     % Google Directions if a key is configured; otherwise fall back to the
     % local built-in graph.
-    (   catch(osrm_route(Start, Destination, Preference, _PathOSRM, DistOSRM, MinOSRM, GeometryOSRM, _Steps), _E, fail)
+    % --- FIX (warning @ line 244): GeometryOSRM was bound but never used
+    % again in this clause. Renamed to _GeometryOSRM (leading underscore)
+    % to tell Prolog this is intentionally unused, without changing logic.
+    (   catch(osrm_route(Start, Destination, Preference, _PathOSRM, DistOSRM, MinOSRM, _GeometryOSRM, _Steps), _E, fail)
     ->  Path = [Start, Destination], Distance = DistOSRM, Minutes = MinOSRM
     ;   ( google_api_key(_Key)
         ->  ( google_route(Start, Destination, Preference, PathG, DistG, MinG)
@@ -727,8 +748,11 @@ path_metrics([From, To|Rest], Distance, Minutes) :-
 
 % Simple server-side logging to a file for diagnostics. Appends a one-line
 % entry with a timestamp and the supplied term (converted to string).
+% --- FIX (warning @ line 730): File from blocked_roads_file(File) was bound
+% but never used again in this clause (LogPath is built separately below).
+% Renamed to _File to mark it as intentionally unused; behavior unchanged.
 log_server_event(Term) :-
-    blocked_roads_file(File),
+    blocked_roads_file(_File),
     % Keep runtime diagnostics separate from source files.
     atomic_list_concat(['backend','logs','server.log'], '/', LogPath),
     get_time(TS), format_time(atom(TimeStr), '%Y-%m-%dT%H:%M:%SZ', TS),
