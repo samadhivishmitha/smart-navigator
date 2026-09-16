@@ -1,0 +1,1073 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Route Finder</title>
+  <style>
+    :root {
+      --ink: #17233f;
+      --muted: #667085;
+      --line: #e4e8f0;
+      --panel: #ffffff;
+      --page: #f4f7fb;
+      --primary: #3563e9;
+      --primary-dark: #254bc0;
+      --success: #0f9f6e;
+      --danger: #d64545;
+      --shadow: 0 18px 45px rgba(32, 57, 104, .12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 32px 20px;
+      background:
+        radial-gradient(circle at 10% 10%, #e3edff 0, transparent 27%),
+        radial-gradient(circle at 90% 85%, #e7fbf3 0, transparent 24%),
+        var(--page);
+      color: var(--ink);
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+    }
+
+    .app {
+      width: min(1080px, 100%);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark {
+      width: 46px;
+      height: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      overflow: hidden;
+      background: white;
+      box-shadow: 0 9px 18px rgba(53, 99, 233, .12);
+    }
+    .brand-mark img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .brand h1 { margin: 0; font-size: 22px; letter-spacing: -.4px; }
+    .brand p { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+    .live-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--success);
+      font-weight: 700;
+    }
+    .dot { width: 9px; height: 9px; border-radius: 99px; background: var(--success); }
+
+    .hero {
+      padding: 32px;
+      border-radius: 22px;
+      color: white;
+      text-align: center;
+      background: linear-gradient(115deg, #152d65, #3563e9 62%, #6c8dff);
+      box-shadow: var(--shadow);
+    }
+    .eyebrow { margin: 0 0 8px; font-size: 12px; font-weight: 800; letter-spacing: 1.6px; opacity: .75; }
+    .hero h2 { margin: 0; font-size: clamp(25px, 4vw, 36px); letter-spacing: -.9px; }
+    .hero p { max-width: 560px; margin: 10px auto 0; color: #dce5ff; line-height: 1.5; }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr);
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .card {
+      padding: 25px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      box-shadow: 0 7px 22px rgba(42, 67, 112, .06);
+    }
+    .map-card { margin-top: 20px; }
+    .card-heading { display: flex; justify-content: space-between; align-items: start; margin-bottom: 23px; }
+    .card-heading h3 { margin: 0; font-size: 17px; }
+    .card-heading p { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+
+    .fields { display: grid; gap: 16px; }
+    label { display: grid; gap: 8px; text-align: left; color: #35415c; font-size: 13px; font-weight: 700; }
+    select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #d8dfeb;
+      border-radius: 10px;
+      outline: none;
+      color: var(--ink);
+      background: #fbfcff;
+      font: inherit;
+    }
+    select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px #e2eaff; }
+    .preference { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .preference input { position: absolute; opacity: 0; }
+    .preference label {
+      display: block;
+      padding: 12px 8px;
+      border: 1px solid #dce3ef;
+      border-radius: 10px;
+      cursor: pointer;
+      text-align: center;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .preference input:checked + label { border-color: var(--primary); background: #edf2ff; color: var(--primary); }
+    .choice-help { margin: -5px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 13px 17px;
+      cursor: pointer;
+      color: white;
+      background: var(--primary);
+      box-shadow: 0 7px 14px rgba(53, 99, 233, .22);
+      font: inherit;
+      font-weight: 800;
+      transition: transform .15s, background .15s;
+    }
+    button:hover { transform: translateY(-1px); background: var(--primary-dark); }
+    .find-button { width: 100%; margin-top: 22px; }
+
+    .route-summary { padding: 21px; border-radius: 14px; background: linear-gradient(135deg, #f0f5ff, #f9fbff); }
+    .route-state { color: var(--success); font-size: 12px; font-weight: 800; }
+    .route-name { margin: 11px 0; font-size: 21px; font-weight: 800; letter-spacing: -.35px; line-height: 1.35; }
+    .route-note { margin: 0; color: var(--muted); font-size: 13px; }
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0; }
+    .metric { padding: 14px 9px; border: 1px solid var(--line); border-radius: 12px; text-align: center; }
+    .metric strong { display: block; font-size: 17px; }
+    .metric span { color: var(--muted); font-size: 11px; }
+    .details { width: 100%; color: var(--primary); background: white; border: 1px solid #cedaff; box-shadow: none; }
+    .details:hover { color: white; }
+    .details:disabled { cursor: not-allowed; color: #9aa6bd; border-color: #e1e6ef; background: #f7f9fc; box-shadow: none; transform: none; }
+
+    .network { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; margin-top: 20px; }
+    .network-info { display: flex; align-items: center; gap: 14px; }
+    .network-icon { width: 43px; height: 43px; display: grid; place-items: center; border-radius: 12px; background: #eafaf4; }
+    .road-symbol { position: relative; width: 22px; height: 14px; border-top: 2px solid var(--success); transform: rotate(-22deg); }
+    .road-symbol::before, .road-symbol::after { content: ''; position: absolute; width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
+    .road-symbol::before { left: -2px; top: -5px; }
+    .road-symbol::after { right: -2px; top: -5px; }
+    .network h3, .network p { margin: 0; }
+    .network p { margin-top: 4px; color: var(--muted); font-size: 13px; }
+    .road-count { color: var(--success); font-weight: 800; }
+    .blocked-count { color: var(--danger); font-weight: 800; }
+    .secondary { color: var(--primary); background: white; border: 1px solid #cedaff; box-shadow: none; }
+    .secondary:hover { color: white; }
+    .top-message {
+      position: fixed;
+      top: 22px;
+      left: 50%;
+      z-index: 10000;
+      width: min(1080px, calc(100% - 40px));
+      padding: 13px 18px;
+      border: 1px solid #f3c6c6;
+      border-radius: 10px;
+      color: #8d2525;
+      background: #fff5f5;
+      box-shadow: 0 10px 26px rgba(80, 28, 28, .16);
+      font-size: 14px;
+      font-weight: 700;
+      text-align: center;
+      transform: translate(-50%, -16px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s, transform .2s;
+    }
+    .top-message.visible {
+      transform: translate(-50%, 0);
+      opacity: 1;
+    }
+
+    @media (max-width: 760px) {
+      body { padding: 18px 14px; }
+      .topbar { align-items: flex-start; }
+      .live-status { display: none; }
+      .hero { padding: 27px 20px; }
+      .dashboard { grid-template-columns: 1fr; }
+      .card { padding: 21px; }
+      .network { grid-template-columns: 1fr; }
+      .network button { width: 100%; }
+    }
+  </style>
+  <!-- Leaflet (OpenStreetMap) - free interactive map -->
+  <!-- Try a resilient CDN (jsDelivr). If you prefer local assets, place vendor/leaflet.css and vendor/leaflet.js in the frontend/vendor/ folder and update these links. -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Inline SVG favicon to avoid browser requesting /favicon.ico from the server -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='100%25' height='100%25' fill='%233563e9'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='10' fill='white'%3E%F0%9F%9A%97%3C/text%3E%3C/svg%3E"/>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">
+          <img src="/assests/logo/logo.jpg" alt="Logo">
+        </div>
+        <div><h1>Smart Route Finder</h1><p>Kelaniya–Colombo commuter routes</p></div>
+      </div>
+      <div class="live-status" id="network-connection-status"><span class="dot"></span><span id="network-connection-label">Road network online</span></div>
+    </header>
+
+    <section class="hero">
+      <p class="eyebrow">LIVE ROAD-AWARE ROUTING</p>
+      <h2>Find a route that works today.</h2>
+      <p>Plan a journey across the Kelaniya–Colombo network while avoiding roads currently marked as blocked.</p>
+    </section>
+
+    <section class="dashboard">
+      <form class="card" id="route-form">
+        <div class="card-heading"><div><h3>Plan your journey</h3><p>Select a start point and destination.</p></div></div>
+        <div class="fields">
+          <label>Start location
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input id="start-input" placeholder="Use current location or type to search" style="flex:1;padding:12px;border:1px solid #d8dfeb;border-radius:10px;" />
+              <button type="button" id="use-location" style="padding:10px 12px;border-radius:10px;border:1px solid #d8dfeb;background:white;color:var(--primary);">Use my location</button>
+            </div>
+            <div id="start-suggestions" style="position:relative;"></div>
+            <input type="hidden" id="start-lat">
+            <input type="hidden" id="start-lon">
+            <input type="hidden" id="start-name">
+          </label>
+          <label>Destination
+            <input id="destination-input" placeholder="Type a destination to search" autocomplete="off" />
+            <div id="destination-suggestions" style="position:relative;"></div>
+            <input type="hidden" id="destination">
+            <input type="hidden" id="destination-lat">
+            <input type="hidden" id="destination-lon">
+          </label>
+          <label>Route preference</label>
+          <div class="preference">
+            <div><input checked type="radio" name="preference" id="fastest" value="fastest"><label for="fastest">⚡ Fastest</label></div>
+            <div><input type="radio" name="preference" id="shortest" value="shortest"><label for="shortest">↔ Shortest</label></div>
+          </div>
+          <p class="choice-help"><strong>Fastest</strong> uses the quickest available route. <strong>Shortest</strong> uses total route distance.</p>
+          <label>Travel mode</label>
+          <div class="preference">
+            <div><input checked type="radio" name="travel-mode" id="on-foot" value="foot"><label for="on-foot">🚶 On foot</label></div>
+            <div><input type="radio" name="travel-mode" id="vehicle" value="vehicle"><label for="vehicle">🚗 Vehicle</label></div>
+          </div>
+          <p class="choice-help">Walking time uses an average pace of 5 km/h. Vehicle time uses the routing service estimate.</p>
+        </div>
+        <button class="find-button" type="submit">Find my best route</button>
+      </form>
+
+      <section class="card">
+        <div class="card-heading"><div><h3>Recommended route</h3><p id="result-caption">The system selects the route automatically.</p></div></div>
+        <div class="route-summary">
+          <div class="route-state" id="route-state">● WAITING FOR JOURNEY</div>
+          <div class="route-name" id="route-name">No route selected yet</div>
+          <p class="route-note" id="route-note">Choose a start point and destination. Blocked roads will be excluded automatically.</p>
+        </div>
+        <div class="metrics">
+          <div class="metric"><strong id="distance">--</strong><span>Distance</span></div>
+          <div class="metric"><strong id="duration">--</strong><span id="duration-label">Walking time</span></div>
+          <div class="metric"><strong id="stops">--</strong><span>Stops</span></div>
+        </div>
+        <button class="details" type="button" id="details" disabled>View journey</button>
+      </section>
+    </section>
+
+    <!-- Map card: displays the route on OpenStreetMap via Leaflet -->
+    <section class="card map-card">
+      <div class="card-heading"><div><h3>Route map</h3><p>Interactive map (OpenStreetMap)</p></div></div>
+      <div id="map" style="height:360px;border-radius:12px;border:1px solid var(--line);"></div>
+    </section>
+
+    <section class="card network">
+      <div class="network-info"><div class="network-icon"><span class="road-symbol"></span></div><div><h3>Road network status</h3><p><span class="road-count">No Journey selected</span></p></div></div>
+      <button class="secondary" type="button" id="manage">Manage road status</button>
+    </section>
+  </main>
+
+  <script>
+    // Initialize Leaflet map (OpenStreetMap tiles).
+    const map = L.map('map', { zoomControl: true });
+    // Set a reasonable view; the backend maps demo coordinates into an area
+    // near Colombo. This center and zoom work for the demo grid mapping.
+    map.setView([6.9271, 79.8612], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const connectionStatus = document.getElementById('network-connection-status');
+    const connectionLabel = document.getElementById('network-connection-label');
+    const connectionDot = connectionStatus.querySelector('.dot');
+
+    let topMessageTimeout = null;
+
+    function showTopMessage(message) {
+      let messageElement = document.getElementById('top-message');
+      if (!messageElement) {
+        messageElement = document.createElement('div');
+        messageElement.id = 'top-message';
+        messageElement.className = 'top-message';
+        messageElement.setAttribute('role', 'alert');
+        document.body.appendChild(messageElement);
+      }
+
+      messageElement.textContent = message;
+      messageElement.classList.add('visible');
+      if (topMessageTimeout) clearTimeout(topMessageTimeout);
+      topMessageTimeout = setTimeout(() => {
+        messageElement.classList.remove('visible');
+      }, 3200);
+    }
+
+    function updateConnectionStatus() {
+      const online = navigator.onLine;
+      connectionLabel.textContent = online ? 'Road network online' : 'Road network offline';
+      connectionStatus.style.color = online ? 'var(--success)' : 'var(--danger)';
+      connectionDot.style.background = online ? 'var(--success)' : 'var(--danger)';
+    }
+
+    window.addEventListener('online', updateConnectionStatus);
+    window.addEventListener('offline', updateConnectionStatus);
+    updateConnectionStatus();
+
+    let routeLayer = null; // polyline layer for the current route
+    let markers = [];
+    let liveWatchId = null;
+    let lastTrackedPosition = null;
+    let activeGeometry = [];
+    let navigationActive = false;
+    let routeDistanceKm = 0;
+    let currentRoutePath = [];
+    let currentRouteRequest = null;
+    let currentRouteAlternatives = [];
+    let activeRouteIndex = 0;
+    let selectedRouteIndex = null;
+    let selectedViaRoad = null;
+    let activeRoadKey = null;
+    const walkingSpeedKmh = 5;
+    const travelModeInputs = document.querySelectorAll('input[name="travel-mode"]');
+    const durationLabel = document.querySelector('#duration-label');
+
+    travelModeInputs.forEach((input) => {
+      input.addEventListener('change', () => {
+        durationLabel.textContent = input.value === 'foot' ? 'Walking time' : 'Vehicle time';
+      });
+    });
+
+    const form = document.querySelector('#route-form');
+    const readableName = (name) => {
+      if (!name) return 'Route';
+      if (typeof name === 'string') {
+        return name.split('_').map(part => part && part[0] ? part[0].toUpperCase() + part.slice(1) : '').join(' ');
+      }
+      if (typeof name === 'object') {
+        if (name.display_name) return name.display_name;
+        if (name.name) return name.name;
+        if (name.lat != null && name.lon != null) return `Lat ${Number(name.lat).toFixed(4)}, Lon ${Number(name.lon).toFixed(4)}`;
+      }
+      return String(name);
+    };
+
+    const routePathLabel = (path, fallbackStart, fallbackDestination) => {
+      if (!Array.isArray(path) || path.length === 0) return fallbackDestination || 'Route';
+      const first = path[0];
+      const last = path[path.length - 1];
+      const startLabel = typeof first === 'string' ? readableName(first) : (fallbackStart || 'Start');
+      const endLabel = typeof last === 'string' ? readableName(last) : (fallbackDestination || 'Destination');
+      return `${startLabel} → ${endLabel}`;
+    };
+
+    const startInput = document.getElementById('start-input');
+    const destinationInput = document.getElementById('destination-input');
+    const destinationValue = document.getElementById('destination');
+    const destinationLatInput = document.getElementById('destination-lat');
+    const destinationLonInput = document.getElementById('destination-lon');
+    const startLatInput = document.getElementById('start-lat');
+    const startLonInput = document.getElementById('start-lon');
+    const startNameInput = document.getElementById('start-name');
+    const suggestionsBox = document.getElementById('start-suggestions');
+
+    // Create a small dropdown container for suggestions
+    const suggestList = document.createElement('div');
+    Object.assign(suggestList.style, { position: 'absolute', top: '8px', left: '0', right: '0', background: 'white', border: '1px solid #e6eefc', borderRadius: '8px', boxShadow: '0 8px 18px rgba(20,36,80,0.06)', zIndex: 999 });
+    suggestionsBox.appendChild(suggestList);
+    suggestList.style.display = 'none';
+
+    const destinationList = document.createElement('div');
+    Object.assign(destinationList.style, { position: 'absolute', top: '8px', left: '0', right: '0', background: 'white', border: '1px solid #e6eefc', borderRadius: '8px', boxShadow: '0 8px 18px rgba(20,36,80,0.06)', zIndex: 999 });
+    document.getElementById('destination-suggestions').appendChild(destinationList);
+    destinationList.style.display = 'none';
+
+    let geolocationMarker = null;
+
+    function showSuggestions(items) {
+      suggestList.innerHTML = '';
+      if (!items || items.length === 0) { suggestList.style.display = 'none'; return; }
+      for (const it of items) {
+        const row = document.createElement('div');
+        row.textContent = it.display_name;
+        Object.assign(row.style, { padding: '8px 12px', cursor: 'pointer' });
+        row.addEventListener('click', () => {
+          startInput.value = it.display_name;
+          startLatInput.value = it.lat;
+          startLonInput.value = it.lon;
+          startNameInput.value = it.display_name;
+          suggestList.style.display = 'none';
+          // Place a marker on the map
+          if (geolocationMarker) { map.removeLayer(geolocationMarker); }
+          geolocationMarker = L.marker([parseFloat(it.lat), parseFloat(it.lon)], {title:it.display_name}).addTo(map);
+          map.setView([parseFloat(it.lat), parseFloat(it.lon)], 13);
+        });
+        suggestList.appendChild(row);
+      }
+      suggestList.style.display = 'block';
+    }
+
+    let searchTimeout = null;
+    startInput.addEventListener('input', () => {
+      const q = startInput.value.trim();
+      startLatInput.value = '';
+      startLonInput.value = '';
+      startNameInput.value = '';
+      if (searchTimeout) clearTimeout(searchTimeout);
+      if (q.length < 2) { showSuggestions([]); return; }
+      searchTimeout = setTimeout(async () => {
+        try {
+          const url = '/api/search?q=' + encodeURIComponent(q);
+          const res = await fetch(url); // server forwards to Nominatim with a proper User-Agent
+          const json = await res.json();
+          const arr = (json && json.ok && json.results) ? json.results : json;
+          showSuggestions(arr);
+        } catch (e) { console.error('Place search failed', e); showSuggestions([]); }
+      }, 350);
+    });
+
+    function showDestinationSuggestions(items) {
+      destinationList.innerHTML = '';
+      if (!items || items.length === 0) { destinationList.style.display = 'none'; return; }
+      for (const item of items) {
+        const row = document.createElement('div');
+        row.textContent = item.display_name;
+        Object.assign(row.style, { padding: '8px 12px', cursor: 'pointer' });
+        row.addEventListener('click', () => {
+          destinationInput.value = item.display_name;
+          destinationValue.value = item.display_name;
+          destinationLatInput.value = item.lat;
+          destinationLonInput.value = item.lon;
+          destinationList.style.display = 'none';
+          map.setView([Number(item.lat), Number(item.lon)], 13);
+        });
+        destinationList.appendChild(row);
+      }
+      destinationList.style.display = 'block';
+    }
+
+    let destinationSearchTimeout = null;
+    destinationInput.addEventListener('input', () => {
+      destinationValue.value = '';
+      destinationLatInput.value = '';
+      destinationLonInput.value = '';
+      const query = destinationInput.value.trim();
+      if (destinationSearchTimeout) clearTimeout(destinationSearchTimeout);
+      if (query.length < 2) { showDestinationSuggestions([]); return; }
+      destinationSearchTimeout = setTimeout(async () => {
+        try {
+          const response = await fetch('/api/search?q=' + encodeURIComponent(query));
+          const result = await response.json();
+          showDestinationSuggestions(result && result.ok ? result.results : []);
+        } catch (error) {
+          console.error('Destination search failed', error);
+          showDestinationSuggestions([]);
+        }
+      }, 350);
+    });
+
+    // Use browser geolocation to set default start location on page load
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const lat = pos.coords.latitude, lon = pos.coords.longitude;
+        startLatInput.value = lat; startLonInput.value = lon; startNameInput.value = 'Current location';
+        startInput.value = 'Current location';
+        if (geolocationMarker) { map.removeLayer(geolocationMarker); }
+        geolocationMarker = L.marker([lat, lon], {title:'Current location'}).addTo(map);
+        map.setView([lat, lon], 13);
+        // Reverse geocode to a human-friendly name
+        try {
+          const r = await fetch('/api/reverse?lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon));
+          const j = await r.json();
+          if (j && j.ok && j.display_name) { startInput.value = j.display_name; startNameInput.value = j.display_name; } else if (j && j.display_name) { startInput.value = j.display_name; startNameInput.value = j.display_name; }
+        } catch (e) { /* ignore */ }
+      }, (err) => {
+        console.log('Geolocation not available or permission denied', err);
+      }, { enableHighAccuracy: true, timeout: 5000 });
+    }
+
+    document.getElementById('use-location').addEventListener('click', () => {
+      if (!navigator.geolocation) { alert('Geolocation not available in this browser'); return; }
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const lat = pos.coords.latitude, lon = pos.coords.longitude;
+        startLatInput.value = lat; startLonInput.value = lon; startNameInput.value = 'Current location'; startInput.value = 'Current location';
+        if (geolocationMarker) { map.removeLayer(geolocationMarker); }
+        geolocationMarker = L.marker([lat, lon], {title:'Current location'}).addTo(map);
+        map.setView([lat, lon], 13);
+        try { const r = await fetch('/api/reverse?lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon)); const j=await r.json(); if (j && j.ok && j.display_name) { startInput.value = j.display_name; startNameInput.value = j.display_name; } else if (j && j.display_name) { startInput.value = j.display_name; startNameInput.value = j.display_name; } } catch(e){}
+      }, (err) => { alert('Unable to get location: ' + err.message); }, { enableHighAccuracy: true, timeout: 10000 });
+    });
+
+    async function drawRouteOnMap(geometry) {
+      // Clear previous route and markers
+      if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+      markers.forEach(m => map.removeLayer(m)); markers = [];
+
+      if (!geometry || !Array.isArray(geometry) || geometry.length === 0) return;
+
+      activeGeometry = geometry.filter(point => Number.isFinite(Number(point.lat)) && Number.isFinite(Number(point.lon)));
+      const latlngs = geometry.map(p => [p.lat, p.lon]);
+      routeLayer = L.polyline(latlngs, { color: '#3563e9', weight: 5, opacity: 0.8 }).addTo(map);
+
+      // Keep the journey endpoints visually distinct from the live position marker.
+      const startMarker = L.circleMarker(latlngs[0], {
+        radius: 9,
+        color: '#1769aa',
+        weight: 3,
+        fillColor: '#42a5f5',
+        fillOpacity: 1,
+        title: 'Source location'
+      }).addTo(map).bindTooltip('Source location', { direction: 'top' });
+      const endMarker = L.circleMarker(latlngs[latlngs.length - 1], {
+        radius: 9,
+        color: '#a12622',
+        weight: 3,
+        fillColor: '#ef5350',
+        fillOpacity: 1,
+        title: 'Destination'
+      }).addTo(map).bindTooltip('Destination', { direction: 'top' });
+      markers.push(startMarker, endMarker);
+
+      // Fit map to route bounds with padding
+      map.fitBounds(routeLayer.getBounds(), { padding: [40, 40] });
+    }
+
+    function degreesToRadians(value) {
+      return value * Math.PI / 180;
+    }
+
+    function distanceBetweenPoints(first, second) {
+      const earthRadius = 6371;
+      const dLat = degreesToRadians(second.lat - first.lat);
+      const dLon = degreesToRadians(second.lon - first.lon);
+      const lat1 = degreesToRadians(first.lat);
+      const lat2 = degreesToRadians(second.lat);
+      const a = Math.sin(dLat / 2) ** 2 +
+        Math.sin(dLon / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+      return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function routeProgressFromPosition(position) {
+      if (activeGeometry.length < 2) return { remainingKm: routeDistanceKm, nearestIndex: 0 };
+      let nearestIndex = 0;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+      const point = { lat: position.lat, lon: position.lon };
+
+      activeGeometry.forEach((routePoint, index) => {
+        const distance = distanceBetweenPoints(point, routePoint);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestIndex = index;
+        }
+      });
+
+      let remainingKm = distanceBetweenPoints(point, activeGeometry[nearestIndex]);
+      for (let index = nearestIndex; index < activeGeometry.length - 1; index += 1) {
+        remainingKm += distanceBetweenPoints(activeGeometry[index], activeGeometry[index + 1]);
+      }
+      return { remainingKm, nearestIndex };
+    }
+
+    function updateNavigationProgress(position) {
+      const progress = routeProgressFromPosition(position);
+      const remainingKm = Math.max(0, progress.remainingKm);
+      const activeMode = document.querySelector('input[name="travel-mode"]:checked').value;
+      document.querySelector('#distance').textContent = `${remainingKm.toFixed(1)} km`;
+      document.querySelector('#route-note').textContent =
+        `Live ${activeMode === 'foot' ? 'walking' : 'vehicle'} navigation active • ${remainingKm.toFixed(1)} km remaining`;
+      document.querySelector('.network p').innerHTML =
+        `<span class="road-count">Navigation active</span> &nbsp;•&nbsp; ` +
+        `<span class="blocked-count">${remainingKm.toFixed(1)} km to destination</span>`;
+
+      if (remainingKm <= 0.05) {
+        document.querySelector('#route-state').textContent = '● ARRIVED';
+        document.querySelector('#route-state').style.color = '#0f9f6e';
+        document.querySelector('#route-note').textContent = 'You have reached your destination.';
+        stopLiveTracking(false);
+      }
+    }
+
+    function resetRoadNetworkStatus() {
+      document.querySelector('.network p').innerHTML =
+        '<span class="road-count">No Journey selected</span>';
+    }
+
+    function stopLiveTracking(resetStatus = true) {
+      if (liveWatchId !== null) {
+        navigator.geolocation.clearWatch(liveWatchId);
+        liveWatchId = null;
+      }
+      navigationActive = false;
+      document.querySelector('#details').textContent = 'View journey';
+      if (resetStatus) resetRoadNetworkStatus();
+    }
+
+    function startLiveTracking() {
+      if (!navigator.geolocation || liveWatchId !== null) return;
+      navigationActive = true;
+      document.querySelector('#details').textContent = 'Stop navigation';
+      document.querySelector('#route-state').textContent = '● NAVIGATION ACTIVE';
+      document.querySelector('#route-state').style.color = '#3563e9';
+      document.querySelector('#map').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(() => map.invalidateSize(), 300);
+      liveWatchId = navigator.geolocation.watchPosition((position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        lastTrackedPosition = { lat, lon };
+        if (geolocationMarker) map.removeLayer(geolocationMarker);
+        geolocationMarker = L.marker([lat, lon], { title: 'Your current position' }).addTo(map);
+        updateNavigationProgress(lastTrackedPosition);
+        if (navigationActive) map.setView([lat, lon], Math.max(map.getZoom(), 15), { animate: true });
+      }, (error) => {
+        console.warn('Live location updates unavailable', error.message);
+        document.querySelector('#route-note').textContent = `Live navigation unavailable: ${error.message}`;
+        stopLiveTracking(true);
+      }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const start = startInput.value && startInput.value.trim();
+      const destination = destinationValue.value || destinationInput.value.trim();
+      const preference = document.querySelector('input[name="preference"]:checked').value;
+      const travelMode = document.querySelector('input[name="travel-mode"]:checked').value;
+      if (window.location.protocol === 'file:') {
+        document.querySelector('#route-state').textContent = '● START THE LOCAL APP SERVER';
+        document.querySelector('#route-state').style.color = '#d64545';
+        document.querySelector('#route-name').textContent = 'Backend connection unavailable';
+        document.querySelector('#route-note').textContent = 'Open http://localhost:8080 after running app_server.pl.';
+        return;
+      }
+      if (!destination) {
+        showTopMessage('Destination cannot be empty');
+        destinationInput.focus();
+        return;
+      }
+      if (!start) {
+        document.querySelector('#route-state').textContent = '● SELECT A START LOCATION';
+        document.querySelector('#route-state').style.color = '#d64545';
+        document.querySelector('#route-name').textContent = 'Start location required';
+        document.querySelector('#route-note').textContent = 'Please allow location access or type a location.';
+        document.querySelector('#details').disabled = true;
+        return;
+      }
+      const button = document.querySelector('.find-button');
+      button.disabled = true;
+      button.textContent = 'Finding your route...';
+      try {
+        // Prefer coordinate-based routing when we have a lat/lon
+        let payload;
+        if (startLatInput.value && startLonInput.value && destinationLatInput.value && destinationLonInput.value) {
+          payload = { start_coord: { lat: parseFloat(startLatInput.value), lon: parseFloat(startLonInput.value), name: startNameInput.value || start }, destination_coord: { lat: parseFloat(destinationLatInput.value), lon: parseFloat(destinationLonInput.value), name: destination }, destination, preference, travel_mode: travelMode };
+        } else if (startLatInput.value && startLonInput.value) {
+          payload = { start_coord: { lat: parseFloat(startLatInput.value), lon: parseFloat(startLonInput.value), name: startNameInput.value || start }, destination, preference, travel_mode: travelMode };
+        } else {
+          // Fallback to named token (legacy behavior). Backend will attempt to normalize.
+          payload = { start: start, destination: destination, preference, travel_mode: travelMode };
+        }
+        if (selectedViaRoad) payload.via_coord = selectedViaRoad;
+        if (selectedRouteIndex !== null) payload.route_index = selectedRouteIndex;
+        const response = await fetch('/api/route', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (!result.ok) throw new Error(result.message || 'No route returned');
+        currentRoutePath = Array.isArray(result.path) ? result.path : [];
+        currentRouteAlternatives = [{
+          index: 0,
+          distance: Number(result.distance || 0),
+          minutes: Number(result.minutes || 0),
+          geometry: result.geometry || [],
+          via_coord: null,
+          opened: true
+        }];
+        currentRouteRequest = {
+          start, destination, preference, travelMode,
+          startCoord: startLatInput.value && startLonInput.value
+            ? { lat: Number(startLatInput.value), lon: Number(startLonInput.value) }
+            : null,
+          destinationCoord: destinationLatInput.value && destinationLonInput.value
+            ? { lat: Number(destinationLatInput.value), lon: Number(destinationLonInput.value) }
+            : null
+        };
+        activeRouteIndex = selectedRouteIndex === null ? 0 : selectedRouteIndex;
+        selectedRouteIndex = null;
+        if (selectedViaRoad) {
+          activeRoadKey = selectedViaRoad.key;
+          selectedViaRoad = null;
+        }
+        document.querySelector('#route-state').textContent = '● ROUTE FOUND';
+        document.querySelector('#route-state').style.color = '#0f9f6e';
+        document.querySelector('#route-name').textContent = routePathLabel(result.path, start, readableName(destination));
+        const modeLabel = travelMode === 'foot' ? 'walking' : 'vehicle';
+        document.querySelector('#route-note').textContent = `${preference === 'fastest' ? 'Fastest' : 'Shortest'} ${modeLabel} route selected while avoiding blocked roads.`;
+        routeDistanceKm = Number(result.distance || 0);
+        document.querySelector('#distance').textContent = `${routeDistanceKm.toFixed(1)} km`;
+        const estimatedMinutes = travelMode === 'foot'
+          ? Math.max(1, Math.ceil((routeDistanceKm / walkingSpeedKmh) * 60))
+          : Math.max(1, Math.round(Number(result.minutes || 0)));
+        document.querySelector('#duration').textContent = `${estimatedMinutes} min`;
+        document.querySelector('#stops').textContent = `${Number(result.stops || 0)} stop${Number(result.stops || 0) === 1 ? '' : 's'}`;
+        document.querySelector('#result-caption').textContent = `Journey from ${start} to ${readableName(destination)}`;
+        document.querySelector('#details').disabled = false;
+       // Draw route on map if geometry is provided
+       if (result.geometry) {
+         drawRouteOnMap(result.geometry);
+       }
+      } catch (error) {
+        document.querySelector('#route-state').textContent = '● ROUTE UNAVAILABLE';
+        document.querySelector('#route-state').style.color = '#d64545';
+        document.querySelector('#route-name').textContent = 'Unable to find a route';
+        document.querySelector('#route-note').textContent = error.message || 'Please try again.';
+        document.querySelector('#details').disabled = true;
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Find my best route';
+      }
+    });
+    document.querySelector('#details').addEventListener('click', async () => {
+      if (navigationActive) {
+        stopLiveTracking(true);
+        document.querySelector('#route-state').textContent = '● ROUTE READY';
+        document.querySelector('#route-state').style.color = '#0f9f6e';
+        document.querySelector('#route-note').textContent = 'Navigation paused. Press View journey to continue.';
+        return;
+      }
+      if (activeGeometry.length > 1) {
+        startLiveTracking();
+        return;
+      }
+      try {
+        const start = startInput.value && startInput.value.trim();
+        const destination = destinationValue.value || destinationInput.value.trim();
+        const preference = document.querySelector('input[name="preference"]:checked').value;
+        const travelMode = document.querySelector('input[name="travel-mode"]:checked').value;
+        // Try to get a step-by-step summary from the route API using coords when available
+        try {
+          let body;
+          if (startLatInput.value && startLonInput.value && destinationLatInput.value && destinationLonInput.value) {
+            body = { start_coord: { lat: parseFloat(startLatInput.value), lon: parseFloat(startLonInput.value), name: startNameInput.value || start }, destination_coord: { lat: parseFloat(destinationLatInput.value), lon: parseFloat(destinationLonInput.value), name: destination }, destination, preference, travel_mode: travelMode };
+          } else if (startLatInput.value && startLonInput.value) {
+            body = { start_coord: { lat: parseFloat(startLatInput.value), lon: parseFloat(startLonInput.value), name: startNameInput.value || start }, destination, preference, travel_mode: travelMode };
+          } else {
+            body = { start, destination, preference, travel_mode: travelMode };
+          }
+          const resp = await fetch('/api/route', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(body)
+          });
+          if (!resp.ok) { alert('Unable to fetch route details from server.'); return; }
+          const route = await resp.json();
+          if (!route.ok) { alert(route.message || 'No route available'); return; }
+          const p = Array.isArray(route.path) ? route.path : [];
+          const steps = [];
+          for (let i = 0; i < p.length - 1; i++) {
+            const from = p[i]; const to = p[i+1];
+            const fromLabel = readableName(from);
+            const toLabel = readableName(to);
+            steps.push({ instruction: `Drive from ${fromLabel} to ${toLabel}`, distance: null, duration: null, name: '' });
+          }
+          if (steps.length === 0) {
+            steps.push({ instruction: `Journey from ${start || 'current location'} to ${readableName(destination)}`, distance: null, duration: null, name: '' });
+          }
+          showJourneyModal(steps);
+        } catch (e) { console.error(e); alert('Failed to get journey details.'); }
+      } catch (e) { console.error(e); alert('Failed to fetch journey details. Check server logs.'); }
+    });
+
+    document.querySelector('#manage').addEventListener('click', async () => {
+      if (currentRoutePath.length < 2) {
+        showTopMessage('Please choose a route first');
+        return;
+      }
+      try {
+        await showRoadStatusPanel();
+      } catch (e) { alert('Unable to manage blocked roads: ' + e.message); }
+    });
+
+    async function showRoadStatusPanel() {
+      let modal = document.getElementById('road-status-modal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'road-status-modal';
+        Object.assign(modal.style, { position: 'fixed', left: 0, top: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', zIndex: 9999 });
+        const card = document.createElement('div');
+        Object.assign(card.style, { width: 'min(680px, 92%)', maxHeight: '82%', overflowY: 'auto', background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' });
+        const close = document.createElement('button');
+        close.textContent = 'Close';
+        Object.assign(close.style, { float: 'right', marginTop: '-6px' });
+        close.addEventListener('click', () => modal.remove());
+        const heading = document.createElement('h3');
+        heading.textContent = 'Manage road status';
+        heading.style.marginTop = '0';
+        const help = document.createElement('p');
+        help.textContent = 'The recommended route is shown as opened. Other roads are available as alternative choices for the next route calculation.';
+        help.style.color = 'var(--muted)';
+        help.style.lineHeight = '1.45';
+        const list = document.createElement('div');
+        list.id = 'road-status-list';
+        card.appendChild(close);
+        card.appendChild(heading);
+        card.appendChild(help);
+        card.appendChild(list);
+        modal.appendChild(card);
+        document.body.appendChild(modal);
+      }
+
+      const list = document.getElementById('road-status-list');
+      list.textContent = 'Loading road status...';
+      if (currentRouteRequest && currentRouteRequest.startCoord && currentRouteRequest.destinationCoord) {
+        currentRouteAlternatives = await discoverAlternativeRoutes();
+        renderRouteAlternatives(list);
+        return;
+      }
+      const response = await fetch('/api/roads');
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.message || 'Road status could not be loaded.');
+
+      list.innerHTML = '';
+      if (!Array.isArray(result.roads) || result.roads.length === 0) {
+        list.textContent = 'No roads are available.';
+        return;
+      }
+
+      async function discoverAlternativeRoutes() {
+        const { startCoord, destinationCoord, preference, travelMode } = currentRouteRequest;
+        const midLat = (startCoord.lat + destinationCoord.lat) / 2;
+        const midLon = (startCoord.lon + destinationCoord.lon) / 2;
+        const latOffset = Math.abs(destinationCoord.lon - startCoord.lon) * 0.18;
+        const lonOffset = Math.abs(destinationCoord.lat - startCoord.lat) * 0.18;
+        const waypoints = [
+          { lat: midLat, lon: midLon + lonOffset, name: 'North-east option' },
+          { lat: midLat + latOffset, lon: midLon, name: 'East option' },
+          { lat: midLat - latOffset, lon: midLon, name: 'West option' },
+          { lat: midLat, lon: midLon - lonOffset, name: 'South-west option' }
+        ];
+        const base = currentRouteAlternatives[0];
+        const requests = waypoints.map(async (via_coord) => {
+          try {
+            const response = await fetch('/api/route', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                start_coord: startCoord,
+                destination_coord: destinationCoord,
+                destination: currentRouteRequest.destination,
+                preference,
+                travel_mode: travelMode,
+                via_coord
+              })
+            });
+            const result = await response.json();
+            return result.ok && Array.isArray(result.geometry) && result.geometry.length > 1
+              ? { distance: Number(result.distance || 0), minutes: Number(result.minutes || 0), geometry: result.geometry, via_coord }
+              : null;
+          } catch (error) {
+            console.warn('Alternative route request failed', error);
+            return null;
+          }
+        });
+        const alternatives = [
+          { ...base, opened: true },
+          ...(await Promise.all(requests)).filter(Boolean).map(route => ({ ...route, opened: false }))
+        ];
+        const unique = [];
+        alternatives.forEach((route) => {
+          if (!unique.some((item) => Math.abs(item.distance - route.distance) < 0.05)) unique.push(route);
+        });
+        return unique.map((route, index) => ({ ...route, index }));
+      }
+
+      function renderRouteAlternatives(list) {
+        list.innerHTML = '';
+        const routes = [...currentRouteAlternatives]
+          .sort((first, second) => Number(first.distance || 0) - Number(second.distance || 0));
+        const shortestDistance = Number(routes[0].distance || 0);
+        const heading = document.createElement('p');
+        heading.innerHTML = '<strong>Possible routes</strong>';
+        list.appendChild(heading);
+
+        const travelMode = currentRouteRequest.travelMode;
+        routes.forEach((route, index) => {
+          const row = document.createElement('div');
+          Object.assign(row.style, { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '12px 0', borderBottom: '1px solid var(--line)' });
+          const label = document.createElement('div');
+          const title = document.createElement('strong');
+          const shortest = index === 0;
+          title.textContent = shortest ? 'Best route' : `Alternative route ${index}`;
+          if (shortest) {
+            const badge = document.createElement('span');
+            badge.textContent = 'RECOMMENDED';
+            Object.assign(badge.style, { display: 'inline-block', marginLeft: '8px', padding: '4px 8px', borderRadius: '999px', background: '#eafaf4', color: 'var(--success)', fontSize: '11px', fontWeight: '800', letterSpacing: '.4px' });
+            title.appendChild(badge);
+          }
+          const distance = Number(route.distance || 0);
+          const minutes = travelMode === 'foot'
+            ? Math.max(1, Math.ceil((distance / walkingSpeedKmh) * 60))
+            : Math.max(1, Math.round(Number(route.minutes || 0)));
+          const extraDistance = Math.max(0, distance - shortestDistance);
+          const extraMinutes = Math.max(0, minutes - (travelMode === 'foot'
+            ? Math.max(1, Math.ceil((shortestDistance / walkingSpeedKmh) * 60))
+            : Math.max(1, Math.round(Number(routes[0].minutes || 0)))));
+          const metadata = document.createElement('small');
+          metadata.textContent = `${distance.toFixed(1)} km • ${minutes} min` +
+            (shortest ? '' : ` • +${extraDistance.toFixed(1)} km, +${extraMinutes} min`);
+          metadata.style.display = 'block';
+          metadata.style.color = 'var(--muted)';
+          label.appendChild(title);
+          label.appendChild(metadata);
+
+          const action = document.createElement('button');
+          const opened = route.opened === true;
+          action.textContent = opened ? 'Opened' : 'Use alternative';
+          action.style.background = opened ? 'var(--success)' : 'var(--primary)';
+          action.disabled = opened;
+          action.addEventListener('click', () => {
+            if (route.via_coord) {
+              selectedViaRoad = route.via_coord;
+              selectedRouteIndex = null;
+            }
+            const modalElement = document.getElementById('road-status-modal');
+            if (modalElement) modalElement.remove();
+            document.querySelector('#route-note').textContent = 'Alternative route selected. Recalculating your route...';
+            form.requestSubmit();
+          });
+          row.appendChild(label);
+          row.appendChild(action);
+          list.appendChild(row);
+        });
+      }
+
+      const routeEdges = new Set();
+      for (let index = 0; index < currentRoutePath.length - 1; index += 1) {
+        routeEdges.add(`${String(currentRoutePath[index]).toLowerCase()}->${String(currentRoutePath[index + 1]).toLowerCase()}`);
+        routeEdges.add(`${String(currentRoutePath[index + 1]).toLowerCase()}->${String(currentRoutePath[index]).toLowerCase()}`);
+      }
+
+      const heading = document.createElement('p');
+      heading.innerHTML = currentRoutePath.length > 1
+        ? '<strong>Recommended route</strong> <span style="display:inline-block;margin-left:8px;padding:4px 8px;border-radius:999px;background:#eafaf4;color:var(--success);font-size:11px;font-weight:800;letter-spacing:.4px">RECOMMENDED</span>'
+        : '<strong>No route selected</strong>';
+      list.appendChild(heading);
+
+      if (currentRoutePath.length > 1) {
+        const currentRow = document.createElement('div');
+        Object.assign(currentRow.style, { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '12px 0', borderBottom: '1px solid var(--line)' });
+        const currentLabel = document.createElement('strong');
+        currentLabel.textContent = activeRoadKey
+          ? `${readableName(activeRoadKey.split('->')[0])} → ${readableName(activeRoadKey.split('->')[1])}`
+          : routePathLabel(currentRoutePath, currentRouteRequest.start, currentRouteRequest.destination);
+        const openedButton = document.createElement('button');
+        openedButton.textContent = 'Opened';
+        openedButton.disabled = true;
+        openedButton.style.background = 'var(--success)';
+        currentRow.appendChild(currentLabel);
+        currentRow.appendChild(openedButton);
+        list.appendChild(currentRow);
+      }
+
+      result.roads.forEach((road) => {
+        const edgeKey = `${String(road.from).toLowerCase()}->${String(road.to).toLowerCase()}`;
+        const selected = activeRoadKey === edgeKey || routeEdges.has(edgeKey);
+        const row = document.createElement('div');
+        Object.assign(row.style, { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '12px 0', borderBottom: '1px solid var(--line)' });
+        const label = document.createElement('div');
+        const title = document.createElement('strong');
+        title.textContent = `${readableName(road.from)} → ${readableName(road.to)}`;
+        const metadata = document.createElement('small');
+        metadata.textContent = `${Number(road.distance || 0).toFixed(1)} km • ${road.minutes || 0} min`;
+        metadata.style.display = 'block';
+        metadata.style.color = 'var(--muted)';
+        label.appendChild(title);
+        label.appendChild(metadata);
+
+        const action = document.createElement('button');
+        action.textContent = selected ? 'Opened' : (road.blocked ? 'Blocked' : 'Use alternative');
+        action.style.background = selected ? 'var(--success)' : (road.blocked ? 'var(--muted)' : 'var(--primary)');
+        action.disabled = selected || road.blocked || !currentRouteRequest;
+        action.addEventListener('click', async () => {
+          action.disabled = true;
+          try {
+            selectedViaRoad = {
+              key: edgeKey,
+              lat: road.to_coord.lat,
+              lon: road.to_coord.lon,
+              name: `${readableName(road.from)} → ${readableName(road.to)}`
+            };
+            modal.remove();
+            document.querySelector('#route-note').textContent =
+              `${readableName(road.from)} → ${readableName(road.to)} selected. Recalculating your route...`;
+            form.requestSubmit();
+          } catch (error) {
+            alert(error.message);
+            action.disabled = false;
+          }
+        });
+        row.appendChild(label);
+        row.appendChild(action);
+        list.appendChild(row);
+      });
+    }
+
+    // Journey details fallback for routes that do not provide turn-by-turn steps.
+    function showJourneyModal(steps) {
+      // Create modal container
+      let modal = document.getElementById('details-modal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'details-modal';
+        Object.assign(modal.style, { position: 'fixed', left: 0, top: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', zIndex: 9999 });
+        const card = document.createElement('div');
+        Object.assign(card.style, { width: '640px', maxHeight: '80%', overflowY: 'auto', background: 'white', borderRadius: '12px', padding: '18px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' });
+        const h = document.createElement('h3'); h.textContent = 'Journey'; h.style.marginTop = '0';
+        const close = document.createElement('button'); close.textContent = 'Close'; Object.assign(close.style, { float: 'right', marginTop: '-36px' });
+        close.addEventListener('click', () => modal.remove());
+        const list = document.createElement('ol'); list.id = 'details-list';
+        card.appendChild(h); card.appendChild(close); card.appendChild(list); modal.appendChild(card); document.body.appendChild(modal);
+      }
+      const list = modal.querySelector('#details-list'); list.innerHTML = '';
+      if (!steps || steps.length === 0) { const li = document.createElement('li'); li.textContent = 'No detailed steps available.'; list.appendChild(li); return; }
+      for (const s of steps) {
+        const li = document.createElement('li');
+        const instr = s.instruction || s.instr || s.name || '';
+        const dist = s.distance ? (Math.round(s.distance) + ' m') : (s.distance_m ? (s.distance_m + ' m') : '');
+        const dur = s.duration ? (Math.round(s.duration) + ' s') : (s.duration_s ? (s.duration_s + ' s') : '');
+        li.textContent = `${instr} ${dist ? '• ' + dist : ''} ${dur ? '• ' + dur : ''}`;
+        list.appendChild(li);
+      }
+    }
+
+  </script>
+</body>
+</html>

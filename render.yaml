@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: smart-route-finder
+    runtime: docker
+    plan: free
+    healthCheckPath: /
