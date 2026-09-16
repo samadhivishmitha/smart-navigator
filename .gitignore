@@ -1,0 +1,5 @@
+backend/logs/*.log
+tools/diagnostics/_tmp_*
+.vscode/
+*.pyc
+__pycache__/
